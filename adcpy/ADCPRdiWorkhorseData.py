@@ -200,9 +200,9 @@ class ADCPRdiWorkhorseData(adcpy.ADCPTransectData):
         if 'bt_vel' in ens_fields:
             self.bt_velocity = self.raw_adcp.bt_vel[:Ne]*1.0e-3 # mm/s -> m/s
             # problems w/ big spikes in bt -> not sure why
-            for j in range(0,1):
+            for j in range(0,2):
                 bt_vel = self.bt_velocity[:,j]
-                ii = np.greater(bt_vel,5.0) # identify where depth is > 5 m/s
+                ii = np.greater(abs(bt_vel),5.0) # identify where depth is > 5 m/s
                 bt_vel[ii] = np.nan
                 bt_vel = au.interp_nans_1d(bt_vel) # interpolate over nans
                 self.bt_velocity[:,j] = bt_vel   
@@ -383,6 +383,19 @@ class ADCPRdiWorkhorseData(adcpy.ADCPTransectData):
             if 'bin_data' in raw_grp.variables:
                 self.raw_adcp.bin_data = raw_grp.variables['bin_data'][...]
 
+
+    def append_ensembles_extra(self,a):
+        super(ADCPRdiWorkhorseData,self).append_ensembles_extra(a)
+        if self.heading is not None:
+            self.heading = au.concatenate_array_w_fill(self.heading,
+                                                  (self.n_ensembles,),
+                                                  a.heading,
+                                                  (a.n_ensembles,))
+        if self.error_vel is not None:
+            self.error_vel = au.concatenate_array_w_fill(self.error_vel,
+                                                  (self.n_ensembles,self.n_bins),
+                                                  a.error_vel,
+                                                  (a.n_ensembles,a.n_bins))
 
     def average_ensembles(self,ens_to_avg):
         """ Extra variables must be averaged for this subclass
