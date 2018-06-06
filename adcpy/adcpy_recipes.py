@@ -23,7 +23,8 @@ import adcpy_utilities as util
 
 
 def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
-                      stats=True,plotline_from_flow=False,sd_drop=0):
+                      stats=True,plotline_from_flow=False,sd_drop=0,
+                      plotline_orientation='default'):
     """ 
     This method takes a list of input ADCPy transect objects, and:
     1) Projects and re-grids each transect to either the input plotline, or a best
@@ -34,7 +35,11 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
         transects = list of ADCPTransectData objects
         dxy = new grid spacing in the xy (or plotline) direction
         dz = new regular grid spacing in the z direction (downward for transects)
-        plotline = optional dsignated line in the xy plane for projecting ensembles onto
+        plotline = optional designated line in the xy plane for projecting ensembles onto
+        plotline_orientaion=how to resolve ambiguity in plotline orientation.  'default'
+          uses (probably) the min x point as the origin.  'river' makes the average flow
+          positive, putting river left at 0 and river right at >0.  This is ignored
+          if plotline or plotline_from_flow are given.
         return_adcpy = True: returns an ADCPData object containing averaged velocities
                        False: returns a 3D numpy array containing U,V,W gridded veloctiy
     """    
@@ -63,6 +68,12 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
             xy_line = adcpy.util.map_flow_to_line(xy_data,flows[:,0],flows[:,1])
         else:
             xy_line = adcpy.util.map_xy_to_line(xy_data)
+            if plotline_orientation=='river':
+                flows = transects[0].calc_ensemble_flow(range_from_velocities=False)
+                Qmean=flows[:,:2].mean(axis=0) # [Qx,Qy]
+                tran_tangent=xy_line[1,:] - xy_line[0,:]
+                if tran_tangent[0]*Qmean[1] - tran_tangent[1]*Qmean[0] < 0:
+                    xy_line=xy_line[::-1,:]
     else:
         xy_line = plotline
     # NEED logic around determining whether original data was negative down, positive up, etc
@@ -111,7 +122,7 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
         avg.xy_srs = transects[0].xy_srs
         sources = [transects[i].source for i in range(n_transects)]
         avg.source = "\n".join(sources)
-        mtimes = [nanmedian(transects[i].mtime) for i in range(n_transects)]
+        mtimes = [util.nanmedian(transects[i].mtime) for i in range(n_transects)]
         mtimes = np.array(filter(None,mtimes))
         if mtimes.any():
             avg.mtime = np.ones(new_shape[0],np.float64) * util.nanmean(mtimes)
@@ -123,6 +134,7 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
         else:
             plotlinestr='None'
         avg.history_append('average_transects(dxy=%f,dz=%f,plotline=%s)'%(dxy,dz,plotlinestr))
+        avg.xy_line=xy_line
         return avg
     else:
         return avg.velocity
@@ -490,7 +502,8 @@ def group_according_to_gap(flat_list,gaps,max_gap,max_group_size):
     return (groups, group_gaps)
 
 
-def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_only=False):     
+def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_only=False,
+                                                   xy_line=None):
     """ 
     Calculates the cross-sectional area of the ADCP profiles from projection
     data, and multiplies it by the velocities to calculate flows
@@ -502,6 +515,7 @@ def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_onl
         use_grid_only = True: use each grid cell to calc flows/mean velocities
           False: first find depth-average velocties, then use depths to find 
           flows/mean velocties
+        xy_line = [[x0,y0],[x1,y1]] defining orientation of the transect
     Returns:
         scalar_mean_vel = mean veolocity of total flow shape [3] {m/s}
         depth_averaged_vel = depth averaged velocity, shape [n,3] {m/s}
@@ -520,7 +534,7 @@ def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_onl
         rfv = True
     elif adcp.bt_depth is None:
         rfv = True
-    xd,yd,dd,xy_line = adcpy.util.find_projection_distances(adcp.xy)
+    xd,yd,dd,xy_line = adcpy.util.find_projection_distances(adcp.xy,pline=xy_line)
     dxy = abs(dd[0]-dd[1])
     dz = abs(adcp.bin_center_elevation[0]-adcp.bin_center_elevation[1])
     (depths, velocity_mask) = adcp.get_velocity_mask(range_from_velocities=rfv,nan_mask=True)

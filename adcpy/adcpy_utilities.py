@@ -1122,8 +1122,7 @@ def calc_Rozovski_rotation(Uflow,Vflow):
     Output:
         Streamwise angles, shape [ne]
     """
-    # Add np.pi to get positive flows in the U component.
-    return np.arctan2(Vflow,Uflow) + np.pi
+    return np.arctan2(Vflow,Uflow) 
 
 
 def calc_net_flow_rotation(Uflow,Vflow):
@@ -2123,6 +2122,7 @@ def find_projection_distances(xy,pline=None):
     """
     if pline is None:
         print 'Warning - generation of fit inside find_projection_distances() is deprecated.'
+        assert False # DBG
         xy_line = map_xy_to_line(xy)
     else:
         xy_line = pline

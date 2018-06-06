@@ -667,7 +667,8 @@ def plot_xy_line(adcp,fig=None,title=None,label=None,use_stars_at_xy_locations=T
 
 def plot_uvw_velocity(adcp,uvw='uvw',fig=None,title=None,ures=None,vres=None,wres=None,
                       vmin=None,vmax=None,
-                      equal_res_about_zero=True,return_panels=False,match_scales=True):
+                      equal_res_about_zero=True,return_panels=False,match_scales=True,
+                      xy_line=None):
     """
     Produces a quick plot of the adcp ensemble x-y locations, from an ADCPData
     object.
@@ -676,6 +677,7 @@ def plot_uvw_velocity(adcp,uvw='uvw',fig=None,title=None,ures=None,vres=None,wre
         fig = input figure number [integer or None]
         title = figure title text [string or None]
         use_stars_at_xy_locations = plots * at actual ensemble locations [True/False]
+        xy_line = [[ x0,y0], [x1,y1]] for projection onto transect, or None to fit.
     Returns:
         fig = matplotlib figure object
     """        
@@ -690,7 +692,7 @@ def plot_uvw_velocity(adcp,uvw='uvw',fig=None,title=None,ures=None,vres=None,wre
     
     if adcp.xy is not None:
         if np.size(adcp.xy[:,0]) == adcp.n_ensembles:
-            xd,yd,dx,xy_line = adcpy.util.find_projection_distances(adcp.xy)
+            xd,yd,dx,xy_line = adcpy.util.find_projection_distances(adcp.xy,pline=xy_line)
     if adcp.mtime is not None:
         if np.size(adcp.mtime) == adcp.n_ensembles:
             dt = adcp.mtime
@@ -745,7 +747,8 @@ def plot_uvw_velocity(adcp,uvw='uvw',fig=None,title=None,ures=None,vres=None,wre
         return fig
 
 
-def plot_flow_summary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flows=False):
+def plot_flow_summary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flows=False,
+                      xy_line=None):
     """
     Plots projected mean flow vectors, U and V velocity profiles, and 
     associated text data on a single plot.
@@ -756,6 +759,8 @@ def plot_flow_summary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flow
         ures,vres = numbers by which the velocity bounds will be rounded up toward [number or None]
         use_grid_flows = calculates flows using crossproduct flow (if available) 
           [True] or by weighted summing of grid cells [False]   
+        xy_line = [[x0,y0],[x1,y1]] line for projection to 2D.  If None, use adcp.xy_line.  If 
+          'calc' or None and adcpy.xy_line is also None, then calculate.
     Returns: 
         fig = matplotlib figure object
     """
@@ -770,14 +775,19 @@ def plot_flow_summary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flow
     vectors = plot_ensemble_mean_vectors(adcp,n_vectors=30,return_panel=True)
     vectors.x = vectors.x - np.min(vectors.x)
     vectors.y = vectors.y - np.min(vectors.y)
+    if xy_line is None:
+        xy_line=adcp.xy_line # may still be None.
+    elif xy_line is 'calc':
+        xy_line=None # force recalc
     u_panel,v_panel = plot_uvw_velocity(adcp,uvw='uv',fig=fig,ures=ures,
-                                        vres=vres,return_panels=True)
+                                        vres=vres,return_panels=True,
+                                        xy_line=xy_line)
     
     u_panel.chop_off_nans = True
     u_panel.xlabel = None
     v_panel.chop_off_nans = True
 
-    xd,yd,dd,xy_line = adcpy.util.find_projection_distances(adcp.xy)           
+    xd,yd,dd,xy_line = adcpy.util.find_projection_distances(adcp.xy,pline=xy_line)
 
     plt.subplot(221)
     vectors.plot()
@@ -820,7 +830,7 @@ def plot_flow_summary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flow
         txt_lines.append('Mean cross-product flow [m^3/s]: %12.2f'%wru)
     else:
         (scalar_mean_vel, depth_averaged_vel, total_flow, total_survey_area) = \
-            calc_transect_flows_from_uniform_velocity_grid(adcp,use_grid_only=True)        
+            calc_transect_flows_from_uniform_velocity_grid(adcp,use_grid_only=True,xy_line=xy_line)
 
         txt_lines.append('Mean U velocity [m/s]: %3.2f'%scalar_mean_vel[0])
 

@@ -122,8 +122,10 @@ class ADCPData(object):
                         'source',       # description of data source and/or filename(s)
                         'references',   # important references for data/the model-version that produced it/publication that reported it
                         'comment',      # miscellaneous comments
-                        'history')      # the history list contains processing evens descriptions/audit trail stored as a single
+                        'history',      # the history list contains processing evens descriptions/audit trail stored as a single
                                         # string delinieated by \n (newline) characters
+                        'xy_line',      # [[x0,y0],[x1,y1]] for projection onto slice
+                        )
     # Flags affecting behavior
     default_lonlat_srs = 'WGS84'
     # Which field is defined as the first dimension of the variables
@@ -131,6 +133,8 @@ class ADCPData(object):
     # consider the data a timeseries
     nc_ensemble_dim = 'ensemble' # 'time'
 
+    xy_line=None
+    
     def __init__(self,raw_file=None,nc_file=None,**kwargs):
         self.clean_base_data()
         self.messages = [] # list of messages related to reading/processing
@@ -781,7 +785,7 @@ class ADCPData(object):
         this elevation are masked as invalid.
         Inputs:
             elev_line = optional scalar or array elevation (distance from 
-              transducer) neyond which velocity is invalid
+              transducer) beyond which velocity is invalid
             range_from_velocities = if True, calculates the elev_line
               from the range of valid (non-NaN) velocities in bins.
             mask_region = 'above' 
@@ -790,12 +794,12 @@ class ADCPData(object):
               velocities
         """
        
-        my_elev_line = np.copy(elev_line)
         if range_from_velocities:
             # find lowest non-nan data
             my_elev_line = util.find_max_elev_from_velocity(self.velocity[:,:,0],
                                                 self.bin_center_elevation)        
-        if my_elev_line is not None:
+        if elev_line is not None:
+            my_elev_line = np.copy(elev_line)
             # mask out velocities below depth
             mask = util.find_mask_from_vector(self.bin_center_elevation,
                                         my_elev_line,
