@@ -12,13 +12,17 @@ Designed for Python 2.7; NumPy 1.7; SciPy 0.11.0; Matplotlib 1.2.0
 """
 import numpy as np
 import matplotlib
-matplotlib.use('TkAgg')
+# This generates verbose warnings when not imported as the first item during
+# a session.  Probably this is not the right place to configured the plotting
+# backend.
+# matplotlib.use('TkAgg')
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
 from matplotlib.dates import num2date#,date2num,
 import scipy.stats.stats as sp
 
 import adcpy
+import adcpy_utilities as util
 from adcpy_recipes import calc_transect_flows_from_uniform_velocity_grid
 
 U_str = 'u'
@@ -533,8 +537,8 @@ def plot_ensemble_mean_vectors(adcp,fig=None,title=None,n_vectors=50,return_pane
     dude = np.zeros((adcp.n_ensembles,2),np.float64)
     velocity = adcp.get_unrotated_velocity()
     # this doesn't factor in depth, may integrate bad values if the have not been filtered into NaNs somehow
-    dude[:,0] = sp.nanmean(velocity[:,:,0],axis=1)
-    dude[:,1] = sp.nanmean(velocity[:,:,1],axis=1)
+    dude[:,0] = util.nanmean(velocity[:,:,0],axis=1)
+    dude[:,1] = util.nanmean(velocity[:,:,1],axis=1)
     vectors = QPanel(velocity = dude,
                       u_vecs = n_vectors,
                       arrow_color = 'k',
@@ -741,7 +745,7 @@ def plot_uvw_velocity(adcp,uvw='uvw',fig=None,title=None,ures=None,vres=None,wre
         return fig
 
 
-def plot_flow_summmary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flows=False):
+def plot_flow_summary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flows=False):
     """
     Plots projected mean flow vectors, U and V velocity profiles, and 
     associated text data on a single plot.
@@ -759,10 +763,9 @@ def plot_flow_summmary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flo
     if adcp.xy is None:            
         ValueError('Cannot plot summary without projected data.')
         raise
-    if fig is None:
-        fig = plt.figure(fig,figsize=(8,10.5))
-    else:
-        plt.clf()
+    if not isinstance(fig,plt.Figure):
+        fig = plt.figure(num=fig,figsize=(8,10.5))
+    fig.clf()
         
     vectors = plot_ensemble_mean_vectors(adcp,n_vectors=30,return_panel=True)
     vectors.x = vectors.x - np.min(vectors.x)
@@ -784,19 +787,13 @@ def plot_flow_summmary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flo
     v_panel.plot()  
     plt.tight_layout()
 
+    txt_lines=[]
+    
     if title is not None:
-        plt.text(0.55,0.933,title,
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
+        txt_lines.append(title)
    
     if adcp.mtime is not None:
-        plt.text(0.55,0.9,'Start of Data: %s'%( num2date(adcp.mtime[0]).strftime('%c')),
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
+        txt_lines.append( 'Start of Data: %s'%( num2date(adcp.mtime[0]).strftime('%c')) )
 
     if adcp.rotation_angle is not None:
         if np.size(adcp.rotation_angle) > 1:
@@ -805,81 +802,43 @@ def plot_flow_summmary(adcp,title=None,fig=None,ures=None,vres=None,use_grid_flo
             rot_str = '%5.2f degrees'%(adcp.rotation_angle*180.0/np.pi)
     else:
         rot_str = 'None'
-    plt.text(0.55,0.866,'Streawise Rotation: %s'%rot_str,
-    horizontalalignment='left',
-    verticalalignment='center',
-    fontsize=10,
-    transform=fig.transFigure)
+    txt_lines.append('Streawise Rotation: %s'%rot_str)
    
-   
-    x1 = min(adcp.xy[:,0][np.nonzero(~np.isnan(adcp.xy[:,0]))])
-    y1 = min(adcp.xy[:,1][np.nonzero(~np.isnan(adcp.xy[:,1]))])
+    x1 = np.nanmin(adcp.xy[:,0]) # min(adcp.xy[:,0][np.nonzero(~np.isnan(adcp.xy[:,0]))])
+    y1 = np.nanmin(adcp.xy[:,1]) # min(adcp.xy[:,1][np.nonzero(~np.isnan(adcp.xy[:,1]))])
     
     loc_string = 'Plot origin (%s) = (%i,%i)'%(adcp.xy_srs,
                                                int(x1),
                                                int(y1))
-    
-    plt.text(0.55,0.833,loc_string,
-    horizontalalignment='left',
-    verticalalignment='center',
-    fontsize=10,
-    transform = fig.transFigure)
+    txt_lines.append(loc_string)
     
     if not use_grid_flows and 'calc_crossproduct_flow' in dir(adcp):    
-    
         wrums,wru,tsa,tcsa = adcp.calc_crossproduct_flow()
-        
-        plt.text(0.55,0.8,'Mean cross-product velocity [m/s]: %3.2f'%wrums,
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
-        
-        plt.text(0.55,0.766,'Mean cross-product flow [m^3/s]: %12.2f'%wru,
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
 
+        txt_lines.append('Mean cross-product velocity [m/s]: %3.2f'%wrums)
+
+        txt_lines.append('Mean cross-product flow [m^3/s]: %12.2f'%wru)
     else:
-        
         (scalar_mean_vel, depth_averaged_vel, total_flow, total_survey_area) = \
             calc_transect_flows_from_uniform_velocity_grid(adcp,use_grid_only=True)        
-        
-        plt.text(0.55,0.8,'Mean U velocity [m/s]: %3.2f'%scalar_mean_vel[0],
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
-        
-        plt.text(0.55,0.766,'Mean V velocity [m/s]: %3.2f'%scalar_mean_vel[1],
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
-        
-        plt.text(0.55,0.733,'Mean U flow [m^3/s]: %12.2f'%total_flow[0],
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
 
-        plt.text(0.55,0.7,'Mean V flow [m^3/s]: %12.2f'%total_flow[1],
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
+        txt_lines.append('Mean U velocity [m/s]: %3.2f'%scalar_mean_vel[0])
+
+        txt_lines.append('Mean V velocity [m/s]: %3.2f'%scalar_mean_vel[1])
+
+        txt_lines.append('Mean U flow [m^3/s]: %12.2f'%total_flow[0])
+
+        txt_lines.append('Mean V flow [m^3/s]: %12.2f'%total_flow[1])
 
     if adcp.source is not None:
-        plt.text(0.55,0.633,'Sources:\n%s'%adcp.source,
-        horizontalalignment='left',
-        verticalalignment='center',
-        fontsize=10,
-        transform = fig.transFigure)
+        txt_lines.append('Sources:\n%s'%adcp.source)
+
+    plt.text(0.45,0.98,"\n".join(txt_lines),
+             ha='left',va='top',fontsize=10,transform=fig.transFigure)
        
     return fig
 
-
+plot_flow_summmary=plot_flow_summary # backwards compat for misspelling
 
 def animate_plot_ensemble_uv(a,frames,interval=1000,span=None,fig=None,title=None,n_vectors=50):
     """

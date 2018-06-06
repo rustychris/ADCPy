@@ -16,6 +16,10 @@ import scipy.interpolate
 import warnings
 from osgeo import osr
 
+# These have moved around depending on versions
+nanmean=getattr(sp,'nanmean',None) or getattr(np,'nanmean')
+nanmedian=getattr(sp,'nanmedian',None) or getattr(np,'nanmedian')
+
 try:
     import fftw3
     has_fftw = True
@@ -753,7 +757,7 @@ def fillProParab(u,z1,depth1,bbc=0):
 
     # depth is negative ?
     depth = depth1
-    if sp.nanmean(depth) < 0:
+    if nanmean(depth) < 0:
         depth=-depth
     
     # find dimensions
@@ -860,17 +864,17 @@ def calcKxKy(vU,vV,dd,z,depth):
         
     """
     ############ calc Ky --> transverse mixing #################
-    Ubar = sp.nanmean(np.reshape(vU,(np.size(vU),1)))
-    Vbar = sp.nanmean(np.reshape(vV,(np.size(vV),1)))
+    Ubar = nanmean(np.reshape(vU,(np.size(vU),1)))
+    Vbar = nanmean(np.reshape(vV,(np.size(vV),1)))
     
     nx = np.size(depth)
     nz = np.size(z)
-    #Ubar = sp.nanmean(vU,1)        # Ubar(n) = nanmean(A(n).uuex(:));
-    #Vbar = sp.nanmean(vV,1)        # Vbar(n) = nanmean(A(n).vvex(:));
+    #Ubar = nanmean(vU,1)        # Ubar(n) = nanmean(A(n).uuex(:));
+    #Vbar = nanmean(vV,1)        # Vbar(n) = nanmean(A(n).vvex(:));
     
     bb = np.max(dd) - np.min(dd)      # bb(n) = max(A(n).dd)-min(A(n).dd);
     # cross-sect avg depth (as in Deng) --> thalweg instead?
-    #Hbar = sp.nanmean(self.bt_depth) # 
+    #Hbar = nanmean(self.bt_depth) # 
     
     ### calc ustar
     # pick a vel from a constant ht above bed --> choose 2 m  
@@ -897,12 +901,12 @@ def calcKxKy(vU,vV,dd,z,depth):
     # calc ustar: ustar^2 =  Cd*U^2
     Cd = 0.003
     ustar = np.sqrt(Cd*U2m**2)
-    ustbar = sp.nanmean(ustar)
-    U2mbar = sp.nanmean(U2m)
+    ustbar = nanmean(ustar)
+    U2mbar = nanmean(U2m)
     
     # Ky - just 1 lateral sections
-    vpr = sp.nanmean(vV)
-    vpr = vpr-sp.nanmean(vpr)
+    vpr = nanmean(vV)
+    vpr = vpr-nanmean(vpr)
     kwet = np.nonzero(~np.isnan(vpr))
     vpr = vpr[kwet]
     nzgw = np.size(kwet)
@@ -940,7 +944,7 @@ def calcKxKy(vU,vV,dd,z,depth):
     zwet = -3                                  # depth to deep enough to include in xsect
     iwet = np.nonzero(np.less(d1,zwet)) # wet (and moderately deep) columns    
     nygw = np.size(iwet)                        # no. wet cells    
-    upr = sp.nanmean(vU,1)-Ubar                # depth avg - xsect mean
+    upr = nanmean(vU,1)-Ubar                # depth avg - xsect mean
     #bg = dd[iwet[nygw-1]] - dd[iwet[0]]           # wet width
     dyg = abs(dd[1] - dd[0])  
     #alph = dyg/bg*np.ones(len(iwet))           # fractional width (const in this case)
@@ -1118,7 +1122,8 @@ def calc_Rozovski_rotation(Uflow,Vflow):
     Output:
         Streamwise angles, shape [ne]
     """
-    return np.arctan2(Vflow,Uflow)
+    # Add np.pi to get positive flows in the U component.
+    return np.arctan2(Vflow,Uflow) + np.pi
 
 
 def calc_net_flow_rotation(Uflow,Vflow):
@@ -1143,7 +1148,7 @@ def average_vector(npvector,avg_shape):
     Output:
         sequentially averaged npvector data 
     """    
-    return sp.nanmean(npvector.reshape(avg_shape),1)
+    return nanmean(npvector.reshape(avg_shape),1)
 
 
 def average_vector_clip(npvector,n_avg):
@@ -1345,7 +1350,7 @@ def fit_head_correct(mtime_in,hdg_in,bt_vel_in,xy_in,u_min_bt=None,
         hdg_bt_bin_count[bin_idx] = sum(in_bin)
         if hdg_bt_bin_count[bin_idx] >= hdg_bin_min_samples:
             #hdg_bt_bin_stddev[bin_idx] = sp.nanstd(hdg_bt_in_bin)
-            #hdg_bt_bin_mean[bin_idx]   = sp.nanmean(hdg_bt_in_bin)
+            #hdg_bt_bin_mean[bin_idx]   = nanmean(hdg_bt_in_bin)
             #print 'mean1: ',hdg_bt_bin_mean[bin_idx]
             #hdg_bt_bin_stddev[bin_idx] = ssm.circstd(hdg_bt_in_bin,high=360,low=0)
             #hdg_bt_bin_mean[bin_idx] = ssm.circmean(hdg_bt_in_bin,high=360,low=0)
@@ -1395,7 +1400,7 @@ def fit_head_correct(mtime_in,hdg_in,bt_vel_in,xy_in,u_min_bt=None,
     if np.sum(~np.isnan(hdg_bt_bin_mean)) < 5:
         # perform linear fit if data is sparse
         
-        cf = (-sp.nanmean(delta_hdg),None,None)
+        cf = (-nanmean(delta_hdg),None,None)
     else:
         # perform harmonic fit for data that spans a large number of headings            
         (cf,yf) = fit_headerror(hdg_bt_bin_mean,delta_hdg)
@@ -1578,10 +1583,10 @@ def find_sd_greater(nparray,elev,sd=3,axis=1):
     nens,vbins = np.shape(nparray)
     if axis == 1:
         vsig = np.array([sp.nanstd(nparray,1)]).T # transpose to vertical
-        test = sd*np.ones([vbins])*vsig + np.ones([vbins])*np.array([sp.nanmean(nparray,1)]).T
+        test = sd*np.ones([vbins])*vsig + np.ones([vbins])*np.array([nanmean(nparray,1)]).T
     else:
         vsig = np.array([sp.nanstd(nparray)])
-        test = sd*np.ones((nens,1))*vsig + np.ones((nens,1))*np.array([sp.nanmean(nparray)])    
+        test = sd*np.ones((nens,1))*vsig + np.ones((nens,1))*np.array([nanmean(nparray)])    
     return np.greater(nparray,test) 
 
 
@@ -1779,7 +1784,7 @@ def find_extrapolated_grid(n_ens,elev,bot_depth=None,adcp_depth=None):
 
     z = elev   # expecting positive values
     if adcp_depth is not None:
-        z = z + sp.nanmean(adcp_depth)  # not currently extrapolating individual profiles...
+        z = z + nanmean(adcp_depth)  # not currently extrapolating individual profiles...
     dz = z[1] - z[0]
     new_bins = np.array([np.arange(z[0]-dz,0,-dz)]).T
     zex = np.append(np.sort(new_bins,0),z)
@@ -1941,7 +1946,7 @@ def unweight_xy_positions(xy,tolerance=5.0):
     included = np.ones(n_xy,np.bool)
     test_xy = xy[0,:]
     for i in range(1,n_xy):
-        if find_line_distance(test_xy,xy[i,:]) > tollerance:
+        if find_line_distance(test_xy,xy[i,:]) > tolerance:
             test_xy = xy[i,:]
         else:
             included[i] = False
@@ -2215,7 +2220,7 @@ def new_xy_grid_old(xy,z,dx,dz,pline=None,fit_to_xy=True):
         z_new = z positions of new grid, 1D numpy array
     """
     # reverse dz if necessary
-    z_is_negative = np.less(sp.nanmean(z),0)
+    z_is_negative = np.less(nanmean(z),0)
     if z_is_negative == (dz < 0):
         my_dz = dz
     else:
@@ -2282,7 +2287,7 @@ def new_xy_grid(xy,z,dx,dz,pline=None,fit_to_xy=True):
         z_new = z positions of new grid, 1D numpy array
     """
     # reverse dz if necessary
-    z_is_negative = np.less(sp.nanmean(z),0)
+    z_is_negative = np.less(nanmean(z),0)
     if z_is_negative == (dz < 0):
         my_dz = dz
     else:
@@ -2331,7 +2336,7 @@ def newer_new_xy_grid(xy,z,dx,dz,pline=None):
         z_new = z positions of new grid, 1D numpy array
     """
     # reverse dz if necessary
-    z_is_negative = np.less(sp.nanmean(z),0)
+    z_is_negative = np.less(nanmean(z),0)
     if z_is_negative == (dz < 0):
         my_dz = dz
     else:
@@ -2516,7 +2521,7 @@ def new_t_grid(t,z,dt,dz):
 
     t_new = np.arange(np.min(t),np.max(t),dt)
     # reverse dz if necessary
-    z_is_negative = np.less(sp.nanmean(z),0)
+    z_is_negative = np.less(nanmean(z),0)
     if z_is_negative == (dz < 0):
         my_dz = dz
     else:
@@ -2601,7 +2606,11 @@ def calc_bin_mean_n(xy,xy_bins,values,z=None,z_bins=None):
         bin_sum, e1 = np.histogram(xy,bins = xy_bins,weights = values)
         bin_n, e1 = np.histogram(xy,bins = xy_bins)
 
-    bin_mean = bin_sum/bin_n
+    bin_mean = bin_sum
+    valid=bin_n>0
+    bin_mean[valid] /= bin_n[valid]
+    bin_mean[~valid] = np.nan
+
     return (bin_mean, bin_n)
 
 def calc_bin_sd(xy,z,values,xy_bins,z_bins,bin_mean,bin_n):
@@ -2627,13 +2636,15 @@ def calc_bin_sd(xy,z,values,xy_bins,z_bins,bin_mean,bin_n):
         elif i > 0:
             sq_sums[i] += (values[n] - bin_mean[i])**2
 
-#    for n in range(np.size(xy)):
-#        if z_not_none:
-#            j = z_bin_num[n]-1
-#            print 'sum_sq bin_n mean sd',sq_sums[i,j],bin_n[i,j],bin_mean[i,j],np.sqrt(sq_sums[i,j]/bin_n[i,j])
+    #    for n in range(np.size(xy)):
+    #        if z_not_none:
+    #            j = z_bin_num[n]-1
+    #            print 'sum_sq bin_n mean sd',sq_sums[i,j],bin_n[i,j],bin_mean[i,j],np.sqrt(sq_sums[i,j]/bin_n[i,j])
 
-    return (np.sqrt(sq_sums/bin_n),xy_bin_num,z_bin_num)
-
+    valid=(bin_n>0)
+    sq_sums[valid] = np.sqrt(sq_sums[valid]/bin_n[valid])
+    sq_sums[~valid]=np.nan
+    return (sq_sums,xy_bin_num,z_bin_num)
 
 
 def prep_xy_regrid(nparray,xy,xy_new,z=None,z_new=None,pre_calcs=None):

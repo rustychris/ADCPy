@@ -127,7 +127,7 @@ def transect_preprocessor(option_file=None):
                                 num_av=1,
                                 adcp_depth=adcp_depth)
             else:
-                 a = adcpy.open_adcp(data_file,
+                a = adcpy.open_adcp(data_file,
                                 file_type=file_type)               
             m1,h1,bt1,xy1 = a.copy_head_correct_vars(xy_srs=xy_projection)
             

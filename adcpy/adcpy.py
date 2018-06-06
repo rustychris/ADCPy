@@ -31,9 +31,11 @@ loaded dynamically.
 """
 adcpdata_subclass_names = [ 'ADCPRdiWorkhorseData',  # RDI Workhorse / WinRiver II Raw File, subclass of ADCPTransectData
                             'ADCPRdiRiverRayData',   # RDI River Ray / WinRiver II Raw File, subclass of ADCPTransectData
-                            'ADCPRdiChannelmasterData' ]  # RDI Channel Master Raw File, subclass of ADCPMooredData
+                            'ADCPRdiChannelmasterData', # RDI Channel Master Raw File, subclass of ADCPMooredData
                             #'ADCPTransectData',      # General sub-class of ADCPData with transect-specific functionality
                             #'ADCPMooredData',        # General sub-class of ADCPData with moored-specific functionality
+                            'ADCPSontekM9',          # Read preprocessed data from Sontek M9
+                            ]
 
 def open_adcp(file_path,file_type=None,**kwargs):
     """ Open an ADCP file and return an ADCPData instance.
@@ -501,12 +503,12 @@ class ADCPData(object):
 
     def xyzt(self):
         """
-        Return the x,y,z, pojected positions, along with the time of every
+        Return the x,y,z, projected positions, along with the time of every
         velocity in the velocity array.
         Returns:
             x = x-direction projected coordinates (ideally m)
             y = y-direction projected coordinates (ideally m)
-            z = z posotion of velocity measure
+            z = z position of velocity measure
             t = datetime of velocity measure
         """
         x = np.hstack([self.x[:,0] for i in range(self.n_bins)])
@@ -767,7 +769,7 @@ class ADCPData(object):
         (my_elev_line,mask) = self.get_velocity_mask(elev_line,range_from_velocities,nan_mask=True)
         mean_velocity = np.zeros((self.n_ensembles,3),np.float64)
         for i in range(3):
-           mean_velocity[:,i] = sp.nanmean(self.velocity[:,:,i]*mask,axis=1)
+           mean_velocity[:,i] = util.nanmean(self.velocity[:,:,i]*mask,axis=1)
         return mean_velocity
 
 
@@ -994,7 +996,7 @@ class ADCPData(object):
         """
         n_splits = len(split_elev)
         sub_adcps = list()
-        elev_is_negative = np.less(sp.nanmean(self.bin_center_elevation),0)            
+        elev_is_negative = np.less(util.nanmean(self.bin_center_elevation),0)            
         if elev_is_negative:
             splits = sorted(split_elev,reverse=True)
         else:

@@ -1,6 +1,6 @@
 # -*- coding: utf-8 -*-
 """Batch processing and logic for organizing and binning multiple ADCPData objects.
-Tools and methods for cateogizing/manipulating/visualizing data in ADCPy/ADCPData
+Tools and methods for categorizing/manipulating/visualizing data in ADCPy/ADCPData
 format.  This module is dependent upon adcpy. 
 
 This code is open source, and defined by the included MIT Copyright License 
@@ -19,6 +19,8 @@ from matplotlib.dates import num2date#,date2num,
 import datetime
 
 import adcpy
+import adcpy_utilities as util
+
 
 def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
                       stats=True,plotline_from_flow=False,sd_drop=0):
@@ -109,10 +111,10 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
         avg.xy_srs = transects[0].xy_srs
         sources = [transects[i].source for i in range(n_transects)]
         avg.source = "\n".join(sources)
-        mtimes = [sp.nanmedian(transects[i].mtime) for i in range(n_transects)]
+        mtimes = [nanmedian(transects[i].mtime) for i in range(n_transects)]
         mtimes = np.array(filter(None,mtimes))
         if mtimes.any():
-            avg.mtime = np.ones(new_shape[0],np.float64) * sp.nanmean(mtimes)
+            avg.mtime = np.ones(new_shape[0],np.float64) * util.nanmean(mtimes)
         if plotline is not None:
             plotlinestr = "[%f,%f],[%f,%f]"%(plotline[0,0],
                                              plotline[0,1],
@@ -532,15 +534,15 @@ def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_onl
         for i in range(3):
             total_flow[i] = np.nansum(np.nansum(adcp.velocity[:,:,i]*area_grid))
             masked_vel = adcp.velocity[:,:,i]*velocity_mask
-            depth_averaged_vel[:,i] = sp.nanmean(masked_vel,axis=1)
-            scalar_mean_vel[i] = sp.nanmean(masked_vel.ravel())
+            depth_averaged_vel[:,i] = util.nanmean(masked_vel,axis=1)
+            scalar_mean_vel[i] = util.nanmean(masked_vel.ravel())
     else:      
         if rfv:
             print 'Warning - No bottom depth set: Calculating flows according valid velocity bins only'
         total_survey_area = np.nansum(dxy*depths)
         depth_averaged_vel =  adcp.ensemble_mean_velocity(range_from_velocities=rfv)
         depth_integrated_flow = adcp.calc_ensemble_flow(range_from_velocities=rfv)
-        scalar_mean_vel = sp.nanmean(depth_averaged_vel,axis=0)
+        scalar_mean_vel = util.nanmean(depth_averaged_vel,axis=0)
         total_flow = np.nansum(depth_integrated_flow,axis=0)
     
     return (scalar_mean_vel, depth_averaged_vel, total_flow, total_survey_area)
