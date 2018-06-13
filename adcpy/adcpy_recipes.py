@@ -509,7 +509,7 @@ def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_onl
     data, and multiplies it by the velocities to calculate flows
     and mean velocities.
     Inputs:
-        adpc = ADCPData object. projected to an xy regualr grid projection
+        adpc = ADCPData object. projected to an xy regular grid projection
         depths = optional 1D array of depths that correspond the ensemble 
           dimension of velocity in adcp
         use_grid_only = True: use each grid cell to calc flows/mean velocities
