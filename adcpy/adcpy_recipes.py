@@ -8,6 +8,8 @@ This code is open source, and defined by the included MIT Copyright License
 Designed for Python 2.7; NumPy 1.7; SciPy 0.11.0; Matplotlib 1.2.0
 2014-09 - First Release; blsaenz, esatel
 """
+from __future__ import print_function
+
 import numpy as np  # numpy 1.7 
 import glob
 import os
@@ -18,8 +20,8 @@ import scipy.stats.morestats as ssm
 from matplotlib.dates import num2date#,date2num,
 import datetime
 
-import adcpy
-import adcpy_utilities as util
+from . import adcpy
+from . import adcpy_utilities as util
 
 
 def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
@@ -42,25 +44,25 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
           if plotline or plotline_from_flow are given.
         return_adcpy = True: returns an ADCPData object containing averaged velocities
                        False: returns a 3D numpy array containing U,V,W gridded veloctiy
-    """    
+    """
     n_transects = len(transects)
     avg = transects[0].copy_minimum_data()
     if n_transects > 1:
-        # ugly brute-force method ot find furthest points;  
+        # ugly brute-force method ot find furthest points;
         # ConvexHull-type approach is only available in more recent scipy
         max_dist = 0.0
         centers = [adcpy.util.centroid(a.xy) for a in transects]
         for c1 in centers:
             for c2 in centers:
                 max_dist = max(max_dist,adcpy.util.find_line_distance(c1,c2))
-        print "max dist:",max_dist
+        print("max dist:",max_dist)
         if max_dist > 30.0:
-            print 'WARNING: averaging transects with maximum centroid distance of %f m!'%max_dist
-            
+            print('WARNING: averaging transects with maximum centroid distance of %f m!'%max_dist)
+
     # gather position data for new grid generation
     xy_data = np.vstack([transects[i].xy for i in range(n_transects)])
-    z_data = np.hstack([transects[i].bin_center_elevation for i in range(n_transects)])        
-    
+    z_data = np.hstack([transects[i].bin_center_elevation for i in range(n_transects)])
+
     # find common grid
     if plotline is None:    
         if plotline_from_flow:
@@ -78,8 +80,8 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
         xy_line = plotline
     # NEED logic around determining whether original data was negative down, positive up, etc
     z_mm = np.array([np.max(z_data),np.min(z_data)])
-    (dd,xy_new_range,xy_new,z_new) = adcpy.util.new_xy_grid(xy_data,z_mm,dxy,dz,xy_line,True)  
-        
+    (dd,xy_new_range,xy_new,z_new) = adcpy.util.new_xy_grid(xy_data,z_mm,dxy,dz,xy_line,True)
+
     # initialize arrays
     xy_bins = adcpy.util.find_regular_bin_edges_from_centers(xy_new_range)
     z_bins = adcpy.util.find_regular_bin_edges_from_centers(z_new)
@@ -123,7 +125,8 @@ def average_transects(transects,dxy,dz,plotline=None,return_adcpy=True,
         sources = [transects[i].source for i in range(n_transects)]
         avg.source = "\n".join(sources)
         mtimes = [util.nanmedian(transects[i].mtime) for i in range(n_transects)]
-        mtimes = np.array(filter(None,mtimes))
+        # list() to force realization
+        mtimes = np.array(list(filter(None,mtimes)))
         if mtimes.any():
             avg.mtime = np.ones(new_shape[0],np.float64) * util.nanmean(mtimes)
         if plotline is not None:
@@ -208,7 +211,7 @@ def write_csv_velocity_db(adcp,csv_filename,no_header=False,un_rotate_velocties=
             elif adcp.lonlat is not None:
                 header = ['longitude [degE]','latitude [degN]']
             else:
-                print 'Error, input adcp has no position data - no file written'
+                print('Error, input adcp has no position data - no file written')
                 return
             header.extend(['z [m]','datetime','u [m/s]','v [m/s]','w [m/s]',])                
             arraywriter.writerow(header)
@@ -267,7 +270,7 @@ def write_ensemble_mean_velocity_db(adcp,csv_filename,no_header=False,
             elif adcp.lonlat is not None:
                 header = ['longitude [degE]','latitude [degN]']
             else:
-                print 'Error, input adcp has no position data - no file written'
+                print('Error, input adcp has no position data - no file written')
                 return
             header.extend(['datetime','U [m/s]','V [m/s]'])                
             arraywriter.writerow(header)
@@ -315,7 +318,7 @@ def group_adcp_obs_by_spacetime(adcp_obs,max_gap_m=30.0,
     """    
     space_groups = group_adcp_obs_within_space(adcp_obs,max_gap_m)
     for i in range(len(space_groups)):
-        print 'space group',i,'- ',len(space_groups[i]), 'observations'
+        print('space group',i,'- ',len(space_groups[i]), 'observations')
     spacetime_groups = []
     for grp in space_groups:
         (sub_groups, gaps) = group_adcp_obs_within_time(grp,
@@ -323,7 +326,7 @@ def group_adcp_obs_by_spacetime(adcp_obs,max_gap_m=30.0,
                                                         max_group_size)
         spacetime_groups.extend(sub_groups)
     for i in range(len(spacetime_groups)):
-        print 'spacetime group',i,'- ',len(spacetime_groups[i]), 'observations'    
+        print('spacetime group',i,'- ',len(spacetime_groups[i]), 'observations')
     return spacetime_groups
 
 
@@ -392,7 +395,7 @@ def group_adcp_obs_within_time(adcp_obs,max_gap_minutes=20.0,max_group_size=6):
             adcp_obs_sorted = [ adcp_obs_sorted[i] for i in nnan_i ]
             return group_according_to_gap(adcp_obs_sorted,gaps,max_gap_minutes,max_group_size=6)
         else:      
-            raise Exception,"find_transects_within_minimum_time_gap(): No valid times found in input files!"
+            raise Exception("find_transects_within_minimum_time_gap(): No valid times found in input files!")
 
 
 
@@ -414,7 +417,7 @@ def find_adcp_files_within_period(working_directory,max_gap=20.0,max_group_size=
         data_files = glob.glob(os.path.join(working_directory,'*[rR].000'))
         data_files.extend(glob.glob(os.path.join(working_directory,'*.nc')))
     else:
-        print "Path (%s) not found - exiting."%working_directory
+        print("Path (%s) not found - exiting."%working_directory)
         exit()
     
     start_times = list()
@@ -528,7 +531,7 @@ def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_onl
         raise
 
     if adcp.rotation_angle is None:
-        print 'Warning - No alignment axis set: Calculating flows according to U=East and V=North'
+        print('Warning - No alignment axis set: Calculating flows according to U=East and V=North')
     rfv = False
     if not "bt_depth" in dir(adcp):
         rfv = True
@@ -552,7 +555,7 @@ def calc_transect_flows_from_uniform_velocity_grid(adcp,depths=None,use_grid_onl
             scalar_mean_vel[i] = util.nanmean(masked_vel.ravel())
     else:      
         if rfv:
-            print 'Warning - No bottom depth set: Calculating flows according valid velocity bins only'
+            print('Warning - No bottom depth set: Calculating flows according valid velocity bins only')
         total_survey_area = np.nansum(dxy*depths)
         depth_averaged_vel =  adcp.ensemble_mean_velocity(range_from_velocities=rfv)
         depth_integrated_flow = adcp.calc_ensemble_flow(range_from_velocities=rfv)
@@ -605,7 +608,7 @@ def transect_rotate(adcp_transect,rotation,xy_line=None):
         # find angle of line:
         if xy_line is None:
             if adcp_transect.xy is None:
-                raise Exception,"transect_rotate() error: ADCPData must be xy projected, or input xy_line must be supplied for normal rotation"
+                raise Exception("transect_rotate() error: ADCPData must be xy projected, or input xy_line must be supplied for normal rotation")
             xy_line = adcpy.util.map_xy_to_line(adcp_transect.xy)
         theta = adcpy.util.calc_normal_rotation(xy_line)
     elif rotation == "no transverse flow":
@@ -618,7 +621,7 @@ def transect_rotate(adcp_transect,rotation,xy_line=None):
         flows = adcp_transect.calc_ensemble_flow(range_from_velocities=True)
         theta = adcpy.util.principal_axis(flows[:,0],flows[:,1],calc_type='EOF')
     elif type(rotation) is str:
-        raise Exception,"In transect_rotate(): input 'rotation' string not understood: %s"%rotation
+        raise Exception("In transect_rotate(): input 'rotation' string not understood: %s"%rotation)
     else:
         theta = rotation
     

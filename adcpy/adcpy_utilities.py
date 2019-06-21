@@ -1,14 +1,16 @@
 """ Calculations used by the adcpy module such as smoothing, principal flow direction and averaging
-This module is independent of adcpy, but is imported by it and is available as adcpy.util.  
+This module is independent of adcpy, but is imported by it and is available as adcpy.util.
 This tools were abstracted out of other classes, either because of potential for reuse in
 recipes, automated scripting or with data from outside adcpy.  They allows potentially complicated
 data processing using the adcpy module to remain readable, hopefully.
 
-This code is open source, and defined by the included MIT Copyright License 
+This code is open source, and defined by the included MIT Copyright License
 
 Designed for Python 2.7; NumPy 1.7; SciPy 0.11.0; Matplotlib 1.2.0
 2014-09 - First Release; blsaenz, esatel
 """
+from __future__ import print_function
+
 import numpy as np
 import scipy.stats.stats as sp
 import scipy.stats.morestats as ssm
@@ -543,7 +545,7 @@ def createLine(v1,v2):
         line = (v1[0], v1[1], v2[0]-v1[0], v2[1]-v1[1])   
     else:
         # error
-        print 'createLine argument error: Please enter a pair of x-y points(as lists)'
+        print('createLine argument error: Please enter a pair of x-y points(as lists)')
 
     return line
 
@@ -610,7 +612,7 @@ def linePosition(point, line):
         
     except:
               
-       print 'linePosition: line and point must be equal or singular - this is probably the error.'
+       print('linePosition: line and point must be equal or singular - this is probably the error.')
        raise
     
     #print 'dxl,dyl',dxl,dyl
@@ -644,11 +646,11 @@ def meanangle(inangle,dim=0,sens=1e-12):
     ind = sum(np.shape(inangle))
     if ind == 1 or np.shape(inangle) :
         #This is a scalar
-        print 'Scalar input encountered, aborting'
+        print('Scalar input encountered, aborting')
         out = inangle
         return out
     if dim > ind:
-        print 'Dimension requested is greater than dimension of input angles, aborting.'
+        print('Dimension requested is greater than dimension of input angles, aborting.')
         out = inangle
         return out
 
@@ -794,7 +796,7 @@ def fillProParab(u,z1,depth1,bbc=0):
         
         if len(a) < 3:
     
-            print 'fillProParab: insufficient data in profile %i'%kk
+            print('fillProParab: insufficient data in profile %i'%kk)
     
         else:
 
@@ -1378,46 +1380,39 @@ def fit_head_correct(mtime_in,hdg_in,bt_vel_in,xy_in,u_min_bt=None,
         if abs(hdmi2[n]-hdmi2[n-1]) > abs(hdmi2[n]-hdmi2[n-1]+360):
             hdmi2[n]=hdmi2[n]+360
     hdg_bt_bin_mean[nn]=hdmi2
-    
+
     if sum(~np.isnan(hdg_bt_bin_mean)) < 3:
-        print "Not enough valid heading bins for head_correct."
-        print "Try reducing hdg_bin_size and/or hdg_bin_min_samples"
-        exit()
-    
+        print("Not enough valid heading bins for head_correct.")
+        print("Try reducing hdg_bin_size and/or hdg_bin_min_samples")
+        assert False # exit()
+
     # hdg_bt_bin_mean[len(hdg_bt_bin_mean)-1]=360  # hack-in test
     #print 'hdg_bt_bin_count:',hdg_bt_bin_count
     #print 'bin_centers:',bin_centers
     #print 'hdg_bt_bin_mean:',hdg_bt_bin_mean
     delta_hdg = bin_centers-hdg_bt_bin_mean  
-    
-    #import fit_hdg_error
-    #reload(fit_hdg_error)
-    
-    #print 'hdg_bt_bin_mean:',hdg_bt_bin_mean,'delta_hdg',delta_hdg                        
 
-    
+    #print 'hdg_bt_bin_mean:',hdg_bt_bin_mean,'delta_hdg',delta_hdg
+
     if np.sum(~np.isnan(hdg_bt_bin_mean)) < 5:
         # perform linear fit if data is sparse
-        
         cf = (-nanmean(delta_hdg),None,None)
     else:
         # perform harmonic fit for data that spans a large number of headings            
         (cf,yf) = fit_headerror(hdg_bt_bin_mean,delta_hdg)
-    
-    print 'cf:',cf
-    
-    return cf        
-    
 
-def find_head_correct(hdg_in,                
-                    cf=None,
-                    u_min_bt=None,
-                    hdg_bin_size=None,
-                    hdg_bin_min_samples=None,
-                    mag_dec=None,
-                    mtime_in=None,
-                    bt_vel_in=None,
-                    xy_in=None):
+    print('cf:',cf)
+    return cf
+
+def find_head_correct(hdg_in,
+                      cf=None,
+                      u_min_bt=None,
+                      hdg_bin_size=None,
+                      hdg_bin_min_samples=None,
+                      mag_dec=None,
+                      mtime_in=None,
+                      bt_vel_in=None,
+                      xy_in=None):
     """
     Makes harmonic heading corrections to input headings, either from supplied
     fit (cf) or my generating a new fit using (mtime_in,hgd_in,bt_vel_in, and
@@ -1443,27 +1438,26 @@ def find_head_correct(hdg_in,
         cf = np.zeros(3,dtype=np.float64)
         
         if mag_dec is not None:
-            print 'No fitted heading correction found - performing single magnetic declination correction'            
+            print('No fitted heading correction found - performing single magnetic declination correction')
             cf[0] = mag_dec
-            
+
         # if no 'cf' fit data is supplied, generate fit from self
-        else: 
-            print 'Warning: attemping to fit heading correcton based on single file.'
+        else:
+            print('Warning: attemping to fit heading correcton based on single file.')
             try:
                 cf = fit_head_correct(mtime_in,hdg_in,bt_vel_in,xy_in,
                                      u_min_bt=u_min_bt,
                                      hdg_bin_size=hdg_bin_size,
                                      hdg_bin_min_samples=hdg_bin_min_samples)
             except:
-                print 'head_correct fitting failure - heading correction not performed!'
+                print('head_correct fitting failure - heading correction not performed!')
                 return 0.0
-        
     return cf[0] + cf[1]*np.cos((np.pi/180)*hdg_in) + cf[2]*np.sin((np.pi/180)*hdg_in)
-    
+
 
 def coordinate_transform(xy_in,in_srs,xy_srs,interp_nans=False):
     """
-    Tranforms (re-projects) coordinates xy_in (with EPSG projection in_srs) to 
+    Tranforms (re-projects) coordinates xy_in (with EPSG projection in_srs) to
     new projection xy_srs, with optional linear interpolation of missing values.
     Inputs:
         xy_in = 2D numpy array, projected positions, shape [n,2]
@@ -1491,7 +1485,7 @@ def coordinate_transform(xy_in,in_srs,xy_srs,interp_nans=False):
                 xy[:,0] = interp_nans_1d(xy[:,0])
                 xy[:,1] = interp_nans_1d(xy[:,1])
             except:
-                print 'lonlat_to_xy: Not enough valid navigation locations to fill NaNs'
+                print('lonlat_to_xy: Not enough valid navigation locations to fill NaNs')
                 raise
     
     return xy
@@ -1538,13 +1532,13 @@ def rotate_velocity(delta,vE_in,vN_in):
            error_dims = 1
 
     if error_dims == 1:
-        print "Error in rotate_velocity: delta is not mappable to velocities."
-        print "Check sizes of input delta and velocity."
+        print("Error in rotate_velocity: delta is not mappable to velocities.")
+        print("Check sizes of input delta and velocity.")
         raise ValueError
     
     # need to coorect for the fact that sometimes there are fewer headers than velocities!
     vE = np.cos(delta1)*vE_in + np.sin(delta1)*vN_in
-    vN = -np.sin(delta1)*vE_in + np.cos(delta1)*vN_in    
+    vN = -np.sin(delta1)*vE_in + np.cos(delta1)*vN_in
     return (vE, vN)
 
 
@@ -1609,19 +1603,19 @@ def remove_values(nparray,rm,axis=None,elev=None,interp_holes=False,warning_frac
     good_vels = np.sum(np.sum(~np.isnan(nparray)))
     fraction_dropped = np.sum(rm) / good_vels
     if fraction_dropped > warning_fraction:
-       print 'Warning: greater than %3.2f%% of velocities will be removed.'%warning_fraction        
-    
-    # drop values    
+       print('Warning: greater than %3.2f%% of velocities will be removed.'%warning_fraction)
+
+    # drop values
     new_array = np.copy(nparray)
     new_array[rm] = np.nan
 
     # interpolate holes if desired
     if interp_holes:
         if elev is None:
-            print "Error in remove_values: setting 'elev' is required to interpolate holes"
+            print("Error in remove_values: setting 'elev' is required to interpolate holes")
             return 0.0
         if axis is None:
-            print "Error in remove_values: setting 'axis' is required to interpolate holes"
+            print("Error in remove_values: setting 'axis' is required to interpolate holes")
             return 0.0
         nens,vbins = np.shape(new_array)
         i, j = np.nonzero(rm)
@@ -1630,7 +1624,7 @@ def remove_values(nparray,rm,axis=None,elev=None,interp_holes=False,warning_frac
         new_interp = np.copy(new_array)  # generate array to interpolate into, so interpolted values
         if axis == 1:
             if np.size(elev) != vbins:
-                print "Error in remove_values:  nparray size, elev size, and axis do not agree"
+                print("Error in remove_values:  nparray size, elev size, and axis do not agree")
                 return 0.0
             # interpolate in 2nd dimension of new_array
             for m in range(len(i)):
@@ -1638,15 +1632,15 @@ def remove_values(nparray,rm,axis=None,elev=None,interp_holes=False,warning_frac
                 new_interp[i[m],j[m]] = np.interp(elev[j[m]],elev[nn],np.squeeze(new_array[i[m],nn]))
         else:
             if np.size(elev) != nens:
-                print "Error in remove_values:  nparray size, elev size, and axis do not agree"
+                print("Error in remove_values:  nparray size, elev size, and axis do not agree")
                 return 0.0
             # interpolate in 1st dimension of new_array
             for m in range(len(i)):
                 nn=np.nonzero(~np.isnan(new_array[:,j[m]]))
                 new_interp[i[m],j[m]] = np.interp(elev[i[m]],elev[nn],np.squeeze(new_array[nn,j[m]]))
-        
+
         new_array = new_interp
-        
+
     return new_array
 
 
@@ -1668,7 +1662,7 @@ def concatenate_array_w_fill(ar1,ar1_shape,ar2,ar2_shape):
     s1 = np.shape(a1)
     s2 = np.shape(a2)
     if len(s1) != len(s2):
-        print "append_array_w_fill: input array must have the same number of dimensions"
+        print("append_array_w_fill: input array must have the same number of dimensions")
         raise ValueError
     axis = None
     for i in range(len(s1)):       
@@ -1680,10 +1674,8 @@ def concatenate_array_w_fill(ar1,ar1_shape,ar2,ar2_shape):
         #print 'a2 shape:',np.shape(a2)
         return np.concatenate((a1,a2),axis=axis)
     else:
-        print "append_array_w_fill: no matching dimensions found for concatenation"
+        print("append_array_w_fill: no matching dimensions found for concatenation")
         raise ValueError
-        
-    
 
 def check_if_array_and_expand(pa,out_shape):
     """
@@ -1703,9 +1695,9 @@ def check_if_array_and_expand(pa,out_shape):
         if out_shape == pa_shape:
             return pa
         else:
-            print 'pa: ',pa
-            print 'out_shape: ',out_shape
-            print "check_if_array_and_expand: out_shape incompatible with pa"
+            print('pa: ',pa)
+            print('out_shape: ',out_shape)
+            print("check_if_array_and_expand: out_shape incompatible with pa")
             raise ValueError
     elif pa_type == "NoneType":
         return np.zeros(out_shape,np.float64)*np.nan
@@ -1728,7 +1720,7 @@ def kernel_smooth(kernel_size,nparray):
     #import convolve_nd
     
     if kernel_size < 3 or kernel_size > min(np.shape(nparray)):
-        print 'Error: kernel_size must be between 3 and the smallest array dimension'
+        print('Error: kernel_size must be between 3 and the smallest array dimension')
         return 0.0    
     kernel = np.ones([kernel_size,kernel_size])        
     nparray_out = np.copy(nparray)    
@@ -2121,7 +2113,7 @@ def find_projection_distances(xy,pline=None):
         dd = distance along fitted line, in the direction of the fit line
     """
     if pline is None:
-        print 'Warning - generation of fit inside find_projection_distances() is deprecated.'
+        print('Warning - generation of fit inside find_projection_distances() is deprecated.')
         assert False # DBG
         xy_line = map_xy_to_line(xy)
     else:
@@ -2444,7 +2436,7 @@ def xy_regrid_multiple(nparray,xy,xy_new,z=None,z_new=None,pre_calcs=None,
         new_dim_xy = np.size(xy_new)
     
     if len(dims) == 1:
-        print 'xy_regrid_multiple: nparray must be 2D or 3D'
+        print('xy_regrid_multiple: nparray must be 2D or 3D')
         raise ValueError
     if len(dims) == 2:
         new_dims = (new_dim_xy,dims[-1])
@@ -2672,7 +2664,7 @@ def prep_xy_regrid(nparray,xy,xy_new,z=None,z_new=None,pre_calcs=None):
     if len(np.shape(nparray)) == 1:
         is_array = False
     elif z is None or z_new is None:
-        print 'Error - to regrid a 2D array, arguments z and z_new are required'
+        print('Error - to regrid a 2D array, arguments z and z_new are required')
         raise ValueError
     else:
         is_array = True       
@@ -2756,7 +2748,7 @@ def xy_interpolate(nparray,xy,xy_new,z=None,z_new=None,pre_calcs=None,kind='cubi
         prep_xy_regrid(nparray,xy,xy_new,z,z_new,pre_calcs)
 
     if kind not in griddata_kinds:
-        raise Exception,"Unknown regrid kind in xy_interpolate()"
+        raise Exception("Unknown regrid kind in xy_interpolate()")
     
     if is_array:
         valid = np.nonzero(~np.isnan(nparray))
@@ -2792,8 +2784,7 @@ def find_mask_from_vector(z,z_values,mask_area):
     elif mask_area == 'above':
         return np.less(z_array,z_values_array)
     else:
-        print "Input mask_area must be set to either 'above' or 'below'"
+        print("Input mask_area must be set to either 'above' or 'below'")
         raise ValueError
-        
-            
-    
+
+

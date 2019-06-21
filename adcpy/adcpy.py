@@ -16,16 +16,17 @@ This code is open source, and defined by the included MIT Copyright License
 Designed for Python 2.7; NumPy 1.7; SciPy 0.11.0; Matplotlib 1.2.0
 2014-09 - First Release; blsaenz, esatel
 """
+from __future__ import print_function
+import six
 
 import os
 import numpy as np
 import scipy.stats.stats as sp
-#import scipy.stats.morestats as ssm
-import adcpy_utilities as util
-import adcpy_plot as plot
+from . import adcpy_utilities as util
+from . import adcpy_plot as plot
 import netCDF4
 
-""" 
+"""
 Make sure subclasses of ADPCData are recorded here, so they may be
 loaded dynamically.
 """
@@ -60,12 +61,12 @@ def open_adcp(file_path,file_type=None,**kwargs):
         ADCPData class object (or sub-class)
     """
     file_name,ext = os.path.splitext(file_path)
-    
+
     # Native NetCDF file type - attempt to determine the correct
     # file_type/subclass module
-    if ext == '.nc':      
+    if ext == '.nc':
         if not os.path.exists(file_path):
-            raise IOError, "Cannot find %s"%file_path       
+            raise IOError("Cannot find %s"%file_path)
         rootgrp = netCDF4.Dataset(file_path, 'r', format='NETCDF4')
         if rootgrp.ADCPData_class_name:
             if rootgrp.ADCPData_class_name in adcpdata_subclass_names:
@@ -73,9 +74,9 @@ def open_adcp(file_path,file_type=None,**kwargs):
             rootgrp.close()
             init_file_type = 'nc_file'
         else:
-            print "Invalid ADCPy NetCDF datafile."
+            print("Invalid ADCPy NetCDF datafile.")
             raise
-    else:   
+    else:
         init_file_type = 'raw_file'
 
     # Import subclass module and init
@@ -84,7 +85,7 @@ def open_adcp(file_path,file_type=None,**kwargs):
             #map(__import__,file_type)
             exec("import %s"%file_type)             
         except:
-            print  "Import of module '" + file_type +"' failed"
+            print("Import of module '" + file_type +"' failed")
             raise
         init_command = 'adata = %s.%s(%s=file_path,**kwargs)'%(file_type,file_type,init_file_type)
     # Init from local classes
@@ -94,7 +95,7 @@ def open_adcp(file_path,file_type=None,**kwargs):
         exec(init_command)                
         return adata      
     except:
-        print  "Init of ADCPData file_type '" + file_type +"' failed"
+        print("Init of ADCPData file_type '" + file_type +"' failed")
         raise             
 
 class ADCPData(object):
@@ -193,7 +194,7 @@ class ADCPData(object):
             s = python str to display
         """
         self.messages.append(s)
-        print s
+        print(s)
         
     def print_history(self):
         """ 
@@ -201,16 +202,16 @@ class ADCPData(object):
         used to get the data - analagous to CF conventions history.
         """
         if self.history is None or not self.history:
-            print 'no history found'
+            print('no history found')
         else:
-            print self.history         
+            print(self.history)
 
     def history_append(self,string):
-        """ 
+        """
         Appends a string to the ADCPData class history
         Inputs:
             string = python str to append
-        """    
+        """
         from datetime import datetime
         dtn = datetime.now()
         self.history = self.history + dtn.strftime('%Y-%m-%d %H:%M:%S ') + string + '; '
@@ -372,7 +373,7 @@ class ADCPData(object):
             nc_file = string with input netcdf filename and path
         """
         if not os.path.exists(nc_file):
-            raise IOError, "Cannot find %s"%nc_file
+            raise IOError("Cannot find %s"%nc_file)
         
         self.nc_file = nc_file
         
@@ -382,10 +383,10 @@ class ADCPData(object):
         # check subclass type of netcdf file to see if the read_nc_extras
         # matches/will work.
         if rootgrp.ADCPData_class_name != self.get_subclass_name():
-            print 'WARNING - NetCDF file was not written by this ADCPData subclass.'
-            print 'Variables besides those in the base class may be ignored.'
-            print 'NetCDF ADCPData Class: ',rootgrp.ADCPData_class_name
-            print 'Calling ADCPData Class: ',self.get_subclass_name()
+            print('WARNING - NetCDF file was not written by this ADCPData subclass.')
+            print('Variables besides those in the base class may be ignored.')
+            print('NetCDF ADCPData Class: ',rootgrp.ADCPData_class_name)
+            print('Calling ADCPData Class: ',self.get_subclass_name())
  
         # read base variables
         # import pdb; pdb.set_trace()
@@ -413,24 +414,22 @@ class ADCPData(object):
             self.xy[:,0] = rootgrp.variables['ens_x'][...]
             self.xy_srs = rootgrp.variables['xy_projection'].epsg_code
 
-            print 'Doing read_nc in ADCPData...'
+            print('Doing read_nc in ADCPData...')
 
 
         self.read_nc_extra(rootgrp)
-        
+
     #except:
-        
-        #print 'NETCDF read of ADCPData failed for file: ',nc_file
+        #print('NETCDF read of ADCPData failed for file: ',nc_file)
 
     #finally:
         # Failing to close the file can cause it to fail on
         # subsequent calls
         rootgrp.close()
-        
         self.history_append('Read in from netcdf file: %s'%nc_file)
 
     def read_nc_var(self,rg,var):
-        """ 
+        """
         Helper method for reading netcdf variables from a netcdf file.
         Inputs:
             rg = Python NetCDF object
@@ -477,12 +476,12 @@ class ADCPData(object):
             xy_srs = EPSG code [str]
         """
         if self.lonlat is None:
-            raise Exception,"lonlat_to_xy: Attempt to transform coordinates with no lat/lon"        
+            raise Exception("lonlat_to_xy: Attempt to transform coordinates with no lat/lon")
         if xy_srs is None:
-            raise Exception,"lonlat_to_xy: Attempt to transform coordinates without supplying projection"        
+            raise Exception("lonlat_to_xy: Attempt to transform coordinates without supplying projection")
         ll_srs = self.lonlat_srs
         if ll_srs is None:
-            ll_srs = self.default_lonlat_srs            
+            ll_srs = self.default_lonlat_srs
         self.xy = util.coordinate_transform(self.lonlat,ll_srs,xy_srs,interp_nans=True)
         self.xy_srs = xy_srs
         self.history_append("lonlat_to_xy(xy_srs=%s)"%xy_srs)
@@ -497,7 +496,7 @@ class ADCPData(object):
             lonlat_srs = EPSG code [str]
         """
         if self.xy is None:
-            raise Exception,"xy_to_lonlat: Attempt to transform coordinates with no xy data"        
+            raise Exception("xy_to_lonlat: Attempt to transform coordinates with no xy data")
         if lonlat_srs is None:
             lonlat_srs = self.default_lonlat_srs            
         self.lonlat = util.coordinate_transform(self.xy,self.xy_srs,lonlat_srs,interp_nans=True)
@@ -611,19 +610,19 @@ class ADCPData(object):
                 if self.xy is not None:
                     xd,yd,elev,xy_line = util.find_projection_distances(self.xy)
                 else:
-                    print "sd_drop: found unprojected location data, returning w/ no velocity modification" 
+                    print("sd_drop: found unprojected location data, returning w/ no velocity modification" )
             else:
                 elev = np.ones(self.n_ensembles)
             axis = 0
         else:
-            print "Unkown axis '%s' passed to sd_drop; vaid options are 'elevation' and 'ensemble'"%sd_axis
-            raise ValueError
+            print("Unkown axis '%s' passed to sd_drop; vaid options are 'elevation' and 'ensemble'"%sd_axis)
+            raise ValueError()
         # drop U/V velocity values, using total uv magnitude
-        drop = util.find_sd_greater(v_mag,elev,sd,axis=axis)          
+        drop = util.find_sd_greater(v_mag,elev,sd,axis=axis)
         for i in range(3):
             if i == 2:
                 # find separate drop values for vertical (W) velocities
-                drop = util.find_sd_greater(v_vert,elev,sd,axis=axis) 
+                drop = util.find_sd_greater(v_vert,elev,sd,axis=axis)
             self.velocity[:,:,i] = util.remove_values(self.velocity[:,:,i],
                                                     drop,
                                                     axis=axis,
@@ -921,8 +920,8 @@ class ADCPData(object):
         """        
         
         if self.mtime is None:
-            print "ensemble times (mtime) must be assgined to regrid by time"
-            raise ValueError
+            print("ensemble times (mtime) must be assgined to regrid by time")
+            raise ValueError()
         else:
             (t_new,z_new) = util.new_t_grid(self.mtime,self.bin_center_elevation,dt,dz)
             zmesh_new, tmesh_new = np.meshgrid(z_new,t_new)
@@ -1015,8 +1014,8 @@ class ADCPData(object):
             # check elevation bounds
                 if splits[i] < np.min(self.bin_center_elevation) or \
                     splits[i] > np.max(self.bin_center_elevation):
-                    print 'split_elev not in range of bin_center_elevation'
-                    raise ValueError
+                    print('split_elev not in range of bin_center_elevation')
+                    raise ValueError()
                 for j in range(np.size(self.bin_center_elevation)):
                     if elev_is_negative:
                         if splits[i] >= self.bin_center_elevation[j]:
@@ -1045,15 +1044,15 @@ class ADCPData(object):
             a = ADCPData object of same class/sub-class as self
         """
         if a.get_subclass_name() != self.get_subclass_name():
-            print "append_ensembles: subclass of a (%s) does not match self."
-            raise ValueError
+            print("append_ensembles: subclass of a (%s) does not match self.")
+            raise ValueError()
         elif a.n_bins != self.n_bins:
-            print "append_ensembles: a.n_bins must match self."            
-            raise ValueError
+            print("append_ensembles: a.n_bins must match self.")
+            raise ValueError()
         elif not np.array_equal(a.bin_center_elevation,self.bin_center_elevation):
-            print "append_ensembles: a.bin_center_elevation must match self."
-            print 'self:',self.bin_center_elevation,'append:',a.bin_center_elevation
-            raise ValueError            
+            print("append_ensembles: a.bin_center_elevation must match self.")
+            print('self:',self.bin_center_elevation,'append:',a.bin_center_elevation)
+            raise ValueError()
         else:
             ne = self.n_ensembles + a.n_ensembles
             nb = self.n_bins
@@ -1201,10 +1200,10 @@ class ADCPTransectData(ADCPData):
             mag_dec = magnetic declination, in degrees, or None
         """
         if self.heading is None:
-            print "Error in heading_correct: self.heading must be assigned"
-            print "Heading correcting not performed"            
-            return 
-        delta = util.find_head_correct(self.heading,            # delta is in degrees  
+            print("Error in heading_correct: self.heading must be assigned")
+            print("Heading correcting not performed")
+            return
+        delta = util.find_head_correct(self.heading,            # delta is in degrees
                                     cf=cf,
                                     u_min_bt=u_min_bt,
                                     hdg_bin_size=hdg_bin_size,
@@ -1220,7 +1219,7 @@ class ADCPTransectData(ADCPData):
             self.bt_velocity[:,1]) = self.rotate_bt_velocities(delta*np.pi/180.0)
         self.heading = self.heading + delta
         if cf is not None:
-            print 'cf', cf
+            print('cf', cf)
             head_str = "heading_correct(cf=[%f,%f,%f])"%(cf[0],cf[1],cf[2])
         else:
             head_str = "heading_correct(hdg_bin_size=%s,"%str(hdg_bin_size) + \
@@ -1259,15 +1258,14 @@ class ADCPTransectData(ADCPData):
         old_rotation = self.rotation_angle
         super(ADCPTransectData,self).set_rotation(radian)
         if axes_string != 'uv':
-            print "WARNING: bottom track velocity rotation not supported for axes: ",axes_string
+            print("WARNING: bottom track velocity rotation not supported for axes: ",axes_string)
         elif self.bt_velocity is not None:
             if old_rotation is not None:
-                (self.bt_velocity[:,0], 
-                 self.bt_velocity[:,1]) = self.rotate_bt_velocities(-1.0*old_rotation)           
+                (self.bt_velocity[:,0],
+                 self.bt_velocity[:,1]) = self.rotate_bt_velocities(-1.0*old_rotation)
             if self.rotation_angle is not None:
-                (self.bt_velocity[:,0], 
-                 self.bt_velocity[:,1]) = self.rotate_bt_velocities(self.rotation_angle)           
-        
+                (self.bt_velocity[:,0],
+                 self.bt_velocity[:,1]) = self.rotate_bt_velocities(self.rotation_angle)
 
     def get_velocity_mask(self,elev_line=None,range_from_velocities=False,
                           mask_region='above',nan_mask=False):
